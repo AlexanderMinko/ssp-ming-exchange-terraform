@@ -1,0 +1,41 @@
+# access.tf — Phase 5: cluster access management via the access-entries API.
+# Your own admin came from bootstrap_cluster_creator_admin_permissions; this builds a
+# SECOND, read-only identity to exercise the API end-to-end.
+
+# Your current identity — used to let you assume the viewer role.
+data "aws_caller_identity" "current" {}
+
+# A read-only "viewer" role you can step into (the assume-role pattern).
+resource "aws_iam_role" "viewer" {
+  name = "${var.cluster_name}-viewer"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { AWS = data.aws_caller_identity.current.arn } # only you may assume it
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+# Register the viewer role as an access entry on the cluster.
+resource "aws_eks_access_entry" "viewer" {
+  cluster_name  = aws_eks_cluster.main.name
+  principal_arn = aws_iam_role.viewer.arn
+  type          = "STANDARD"
+}
+
+# Grant that entry read-only access, cluster-wide.
+resource "aws_eks_access_policy_association" "viewer" {
+  cluster_name  = aws_eks_cluster.main.name
+  principal_arn = aws_iam_role.viewer.arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
+
+  access_scope {
+    type = "cluster" # cluster-wide; use "namespace" + namespaces=[...] to scope tighter
+  }
+
+  # The entry must exist before a policy can be associated with it.
+  depends_on = [aws_eks_access_entry.viewer]
+}

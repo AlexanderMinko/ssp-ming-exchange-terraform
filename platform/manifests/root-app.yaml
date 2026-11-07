@@ -1,0 +1,24 @@
+# root-app.yaml — the "App-of-Apps" root. Applied by TERRAFORM, not by hand:
+#   terraform_data.argocd_root (platform/05-argocd.tf) runs `kubectl apply` on this file after the
+#   Argo CD helm_release, and re-applies whenever its content hash changes.
+# It watches argocd/apps/ in the CONFIG repo (ssp-exchange-helm) and creates the child Applications
+# found there. After bootstrap you never `kubectl apply` an Application — add a file to argocd/apps/
+# in the config repo and `git push`.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AlexanderMinko/ssp-exchange-helm.git
+    targetRevision: main
+    path: argocd/apps # the directory of child Application manifests
+  destination:
+    server: https://kubernetes.default.svc # this same cluster
+    namespace: argocd # child Applications are created in the argocd namespace
+  syncPolicy:
+    automated:
+      prune: true # delete child Apps that are removed from git
+      selfHeal: true # revert manual kubectl edits back to the git state

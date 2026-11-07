@@ -1,0 +1,30 @@
+# Shared, infra-owned edge — ONE Gateway (= one ALB) that all apps attach HTTPRoutes to.
+# Gateway API's intended role split: infra owns the Gateway; app teams own their HTTPRoutes.
+# `from: All` lets HTTPRoutes in any namespace (production, dsp, ssp…) attach to this Gateway.
+apiVersion: gateway.k8s.aws/v1beta1
+kind: LoadBalancerConfiguration
+metadata:
+  name: internet-facing
+  namespace: edge
+spec:
+  scheme: internet-facing
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: shared
+  namespace: edge
+spec:
+  gatewayClassName: alb
+  infrastructure:
+    parametersRef:
+      group: gateway.k8s.aws
+      kind: LoadBalancerConfiguration
+      name: internet-facing
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All

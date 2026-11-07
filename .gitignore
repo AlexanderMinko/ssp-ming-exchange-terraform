@@ -1,0 +1,29 @@
+# NOTE: git treats `#` as a comment ONLY at the start of a line. A trailing "# ..." after a
+# pattern becomes part of the pattern and silently breaks it — keep comments on their own lines.
+
+# --- Terraform ---
+# provider plugins / modules (machine-local, large)
+.terraform/
+# state never in git (secrets in plaintext); it lives in S3
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+# may hold secrets / per-env values
+*.tfvars
+!*.tfvars.example
+# NOTE: .terraform.lock.hcl IS committed (pins provider versions) — not ignored.
+
+# --- Helm ---
+# Vendored subcharts pulled by `helm dependency build/update` into a parent chart's charts/.
+# The SOURCE charts (e.g. charts/mongodb/) are committed; the vendored copies are not.
+charts/*/charts/
+*.tgz
+# NOTE: Chart.lock IS committed (pins resolved dependency versions) — not ignored.
+
+# --- Local / OS / IDE ---
+.DS_Store
+.idea/
+kubeconfig
+*.log
+EKS_Cluster_Learning_Plan_v2.md
