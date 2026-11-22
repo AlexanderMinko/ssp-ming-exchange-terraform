@@ -41,7 +41,13 @@ resource "terraform_data" "argocd_root" {
   provisioner "local-exec" {
     command = "kubectl apply -f ${path.module}/manifests/root-app.yaml"
   }
-  depends_on = [helm_release.argocd]
+  # The ServiceMonitor CRD must exist before Argo CD's first sync: the exchange and bidders charts ship a
+  # ServiceMonitor, and an unknown kind fails the WHOLE sync (Deployment included). Auto-sync doesn't retry
+  # the same commit, so without this order the apps could sit OutOfSync until the next git push.
+  depends_on = [
+    helm_release.argocd,
+    helm_release.prometheus_operator_crds,
+  ]
 }
 
 

@@ -34,13 +34,16 @@ resource "aws_iam_role" "github_actions" {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
         }
-        # sub uses a wildcard (StringLike) to allow any v* tag but ONLY from our repo.
+        # sub uses a wildcard (StringLike) to allow any v* tag but ONLY from our repos: two entries
+        # (v* tags, main) per repo in var.github_repos. A list value in a condition = OR.
         # ⚠️ Never loosen the repo part to `*` — that would let ANY GitHub repo assume this role.
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = [
-            "repo:${var.github_repo}:ref:refs/tags/v*",
-            "repo:${var.github_repo}:ref:refs/heads/main"
-          ]
+          "token.actions.githubusercontent.com:sub" = flatten([
+            for repo in var.github_repos : [
+              "repo:${repo}:ref:refs/tags/v*",
+              "repo:${repo}:ref:refs/heads/main",
+            ]
+          ])
         }
       }
     }]
@@ -65,8 +68,10 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
         Resource = "*"
       },
       {
-        # The actual push (and cache-pull) verbs, scoped to THIS repo's ARN only.
-        Sid    = "PushToAppRepo"
+        # The actual push (and cache-pull) verbs, scoped to OUR repos' ARNs only.
+        # Learning shortcut: one role for both app repos, so the exchange's CI could also push to
+        # eks-dev/bidders (and the reverse). Prod would give each GitHub repo its own role + ECR repo.
+        Sid    = "PushToAppRepos"
         Effect = "Allow"
         Action = [
           "ecr:BatchCheckLayerAvailability", # does this layer already exist? (dedup)
@@ -77,7 +82,7 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
           "ecr:BatchGetImage",               # read for buildx cache-from
           "ecr:GetDownloadUrlForLayer",      # read layers for cache-from
         ]
-        Resource = aws_ecr_repository.app.arn
+        Resource = [aws_ecr_repository.exchange.arn, aws_ecr_repository.bidders.arn]
       },
     ]
   })

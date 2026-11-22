@@ -14,8 +14,8 @@ resource "aws_eks_cluster" "main" {
   }
 
   access_config {
-    authentication_mode                         = "API"  # access entries API, not the aws-auth ConfigMap
-    bootstrap_cluster_creator_admin_permissions = true   # give the creating identity (you) cluster-admin
+    authentication_mode                         = "API" # access entries API, not the aws-auth ConfigMap
+    bootstrap_cluster_creator_admin_permissions = true  # give the creating identity (you) cluster-admin
   }
 
   # role_arn depends on the role, but NOT on its policy attachment. The control plane needs

@@ -39,8 +39,8 @@ resource "aws_subnet" "public" {
 
   tags = {
     Name                                        = "${var.cluster_name}-public-${each.key}"
-    "kubernetes.io/role/elb"                    = "1"       # LB controller: put internet-facing ALBs here
-    "kubernetes.io/cluster/${var.cluster_name}" = "shared"  # cluster discovery (shared, not owned)
+    "kubernetes.io/role/elb"                    = "1"      # LB controller: put internet-facing ALBs here
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared" # cluster discovery (shared, not owned)
   }
 }
 
@@ -54,7 +54,7 @@ resource "aws_subnet" "private" {
 
   tags = {
     Name                                        = "${var.cluster_name}-private-${each.key}"
-    "kubernetes.io/role/internal-elb"           = "1"       # LB controller: internal LBs here; also where nodes live
+    "kubernetes.io/role/internal-elb"           = "1" # LB controller: internal LBs here; also where nodes live
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 }
@@ -75,7 +75,7 @@ resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
   route {
-    cidr_block = "0.0.0.0/0" # everything not local...
+    cidr_block = "0.0.0.0/0"                  # everything not local...
     gateway_id = aws_internet_gateway.main.id # ...goes out the internet gateway
   }
 

@@ -8,7 +8,7 @@ resource "aws_eks_node_group" "workers" {
   # Private subnets only → nodes get no public IPs; egress via NAT, no inbound from internet.
   subnet_ids = [for s in aws_subnet.private : s.id]
 
-  instance_types = ["t3.large"] # 2 vCPU / 8 GiB. Phase 13 (16/11/2026): ClickHouse (SigNoz) + VictoriaMetrics don't fit on t3.medium
+  instance_types = ["t3.large"]             # 2 vCPU / 8 GiB. Phase 13 (16/11/2026): ClickHouse (SigNoz) + VictoriaMetrics don't fit on t3.medium
   ami_type       = "AL2023_x86_64_STANDARD" # required — AL2 AMIs gone from k8s 1.33+
   disk_size      = 20                       # GB, EBS root volume per node
 

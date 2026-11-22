@@ -43,8 +43,8 @@ resource "aws_iam_role" "node" {
 # Three managed policies, attached in one for_each over a set of ARNs.
 resource "aws_iam_role_policy_attachment" "node" {
   for_each = toset([
-    "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",         # join the cluster
-    "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",              # CNI: ENIs + pod IPs (see note — overlaps Pod Identity)
+    "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",          # join the cluster
+    "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",               # CNI: ENIs + pod IPs (see note — overlaps Pod Identity)
     "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly", # pull images from ECR
   ])
 

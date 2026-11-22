@@ -44,8 +44,17 @@ variable "environment" {
   default     = "dev"
 }
 
-variable "github_repo" {
-  description = "GitHub repo (owner/name) allowed to assume the Actions role, e.g. \"ominko/ssp-exchange\". No default: only you know it — set it in terraform.tfvars."
-  type        = string
-  default     = "AlexanderMinko@60578360/SSP-Exchange@1306765118"
+variable "github_repos" {
+  description = <<-EOT
+    GitHub repos allowed to assume the Actions role, in GitHub's immutable-ID subject form
+    "<owner>@<owner_id>/<repo>@<repo_id>". Copy each from the repo's real claim (minus the "repo:" prefix):
+      gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix
+    The IDs pin the repo: a deleted and re-created repo with the same name gets a new ID and is NOT trusted.
+    The NAME is in the claim too: renaming a repo changes its subject, so update this list after a rename.
+  EOT
+  type        = list(string)
+  default = [
+    "AlexanderMinko@60578360/ssp-ming-exchange@1306765118", # renamed from SSP-Exchange → eks-dev/exchange
+    "AlexanderMinko@60578360/ssp-ming-bidders@1448814115",  # ssp-ming-bidders  → eks-dev/bidders
+  ]
 }
