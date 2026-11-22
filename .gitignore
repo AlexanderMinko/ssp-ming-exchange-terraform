@@ -27,3 +27,4 @@ charts/*/charts/
 kubeconfig
 *.log
 EKS_Cluster_Learning_Plan_v2.md
+

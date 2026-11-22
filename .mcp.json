@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "exchange-mongo": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "../ssp-ming-mcp/node_modules/tsx/dist/cli.mjs",
+        "../ssp-ming-mcp/src/mongo/server.ts"
+      ],
+      "env": {
+        "MONGO_URI": "${MONGO_URI:-mongodb://localhost:27017/ssp-exchange}",
+        "BIDDERS_MONGO_URI": "${BIDDERS_MONGO_URI:-mongodb://localhost:27017/ssp-bidders}"
+      }
+    },
+    "victoriametrics": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "../ssp-ming-mcp/node_modules/tsx/dist/cli.mjs",
+        "../ssp-ming-mcp/src/victoriametrics/server.ts"
+      ],
+      "env": {
+        "VM_URL": "${VM_URL:-http://localhost:8428}",
+        "VMAGENT_URL": "${VMAGENT_URL:-}"
+      }
+    },
+    "ssp-signoz": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "../ssp-ming-mcp/node_modules/tsx/dist/cli.mjs",
+        "../ssp-ming-mcp/src/signoz/server.ts"
+      ],
+      "env": {
+        "SIGNOZ_URL": "${SSP_MING_SIGNOZ_URL:-http://localhost:3301}",
+        "SIGNOZ_API_KEY": "${SSP_MING_SIGNOZ_API_KEY:-}"
+      }
+    }
+  }
+}

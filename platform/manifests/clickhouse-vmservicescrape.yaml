@@ -1,0 +1,23 @@
+# ClickHouse self-monitoring: vmagent scrapes ClickHouse's health metrics into VictoriaMetrics.
+# Applied by terraform_data.clickhouse_scrape (07-signoz.tf).
+#
+# Why VictoriaMetrics and not SigNoz: a full ClickHouse disk stops SigNoz too, so the system watching
+# ClickHouse must not depend on it. Same setup as Start.io (start-infra-gitops infra/signoz, self-monitoring).
+#
+# Target: the Service `signoz-clickhouse-operator-metrics` (port 8888), created by the signoz chart.
+# Behind it, the Altinity operator's metrics-exporter reads ClickHouse's internal stats (parts, merges,
+# inserts, memory, queries) and serves them in Prometheus format.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: signoz-clickhouse
+  namespace: signoz
+spec:
+  # Matches the metrics Service's labels (and not the ClickHouse server's own Services).
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: clickhouse
+      app.kubernetes.io/instance: signoz
+      app.kubernetes.io/component: operator
+  endpoints:
+    - port: signoz-clickhouse-operator-metrics # the Service port NAME, like `http` in the app ServiceMonitors
