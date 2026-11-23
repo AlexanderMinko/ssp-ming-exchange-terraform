@@ -13,9 +13,13 @@ resource "aws_eks_node_group" "workers" {
   disk_size      = 20                       # GB, EBS root volume per node
 
   scaling_config {
-    desired_size = 3 # Phase 13: 3 × t3.large = 24 GiB for apps + VictoriaMetrics + SigNoz/ClickHouse
-    min_size     = 2
-    max_size     = 4
+    # 4 × t3.large (23/11/2026, was 3 since Phase 13): 7.72 cores / 32 GiB allocatable-ish. After the 22/11 load run
+    # the requests were raised to match real use (exchange 2–3 × 1000m, bidders 2 × 500m, ClickHouse 500m / 2Gi), and
+    # 3 nodes (5.79 cores allocatable) could no longer hold them: a pod that doesn't fit stays Pending (no autoscaler).
+    # Changing desired_size is an in-place ASG update: one node is added, the running nodes and pods aren't touched.
+    desired_size = 4
+    min_size     = 3
+    max_size     = 5 # caps only an autoscaler (none yet); desired must stay <= max, so a 5th node needs both
   }
   # No lifecycle ignore_changes[desired_size]: that's only for the Cluster Autoscaler.
   # Karpenter (later) provisions nodes directly and won't fight this static group.

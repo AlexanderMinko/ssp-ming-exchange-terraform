@@ -40,18 +40,72 @@ resource "helm_release" "signoz" {
     }
 
     clickhouse = {
-      # The chart default request is 200Mi; real ClickHouse sits at ~1–2 GiB. A request far below real
-      # use lets the scheduler pack it onto a node that can't hold it → OOM kills under load.
+      # Requests = the measured upper bound (decided 23/11/2026). In the 22/11 load run (full tracing, 500 rps)
+      # ClickHouse used ~540m CPU on average and 1.1 GB idle → 2.29 GB at peak, against 200m / 1Gi requested.
+      # The scheduler places by requests, never by use, so it packed ClickHouse next to the bidders on a 2-vCPU
+      # node that then sat at 100% CPU. With sampling 0.1 the real load is lower; these are the upper bound.
+      # Capacity: with the apps' requests raised the same day (exchange 2 × 1000m, bidders 2 × 500m) this didn't fit on
+      # 3 × t3.large; the node group has 4 since 23/11/2026 (infra/06-node-group.tf). Check for Pending pods after every apply.
       # No limit on purpose: ClickHouse sizes its caches from the memory it sees; a tight limit without
       # tuning max_server_memory_usage gets it OOM-killed. Prod would set both, tuned together.
       resources = {
         requests = {
-          cpu    = "200m"
-          memory = "1Gi"
+          cpu    = "500m"
+          memory = "2Gi"
         }
       }
       persistence = {
         size = "20Gi" # 3 days of pet-project logs + traces fit easily; gp3 allowVolumeExpansion if not
+      }
+    }
+
+    # The OTLP collector: a safety valve for overload (decided 23/11/2026). The chart sets no memory limit and,
+    # despite its values comment, no memory_limiter (its templates never generate one). In the 22/11 load run
+    # ClickHouse fell behind, the exporters' sending queues grew to 5.3 GB, and the kubelet evicted the collector
+    # under node memory pressure — on a node that also ran the exchange and mongodb-0.
+    #   memory limit    the hard stop: above it the kernel kills the container (OOMKilled), the node stays safe
+    #   memory_limiter  the brake below it: refuses new data (OTLP error → the apps' BatchSpanProcessor drops spans)
+    #                   so the queues drain and the collector keeps running
+    #   GOMEMLIMIT      Go's GC aims below this, so garbage doesn't push the heap toward the hard limit
+    otelCollector = {
+      resources = {
+        requests = {
+          cpu    = "100m"
+          memory = "512Mi"
+        }
+        limits = {
+          memory = "1Gi"
+        }
+      }
+      additionalEnvs = {
+        GOMEMLIMIT = "800MiB"
+      }
+      config = {
+        processors = {
+          memory_limiter = {
+            check_interval         = "1s"
+            limit_percentage       = 80 # of the container limit (1Gi): hard limit ~820 MiB, forces a GC above it
+            spike_limit_percentage = 25 # soft limit = 80 − 25 = 55% (~560 MiB): refuse new data above it
+          }
+        }
+        # memory_limiter must be FIRST: it has to refuse data before any other processor spends memory on it.
+        # ⚠️ Helm replaces lists wholesale, so each list repeats the chart's default after memory_limiter
+        # (signoz chart 0.150.0). Maps deep-merge, so receivers/exporters keep the chart's values.
+        # On a chart upgrade: diff these lists against `helm show values signoz --version <new>`
+        # (otelCollector.config.service.pipelines), or a new default processor is silently dropped.
+        service = {
+          pipelines = {
+            traces = {
+              processors = ["memory_limiter", "signozspanmetrics/delta", "signozspanmapper", "signozllmpricing", "filter/drop_stale", "batch"]
+            }
+            metrics = {
+              processors = ["memory_limiter", "filter/drop_stale", "batch"]
+            }
+            logs = {
+              processors = ["memory_limiter", "signozlogsnormalizer", "filter/drop_stale", "batch"]
+            }
+          }
+        }
       }
     }
   })]
