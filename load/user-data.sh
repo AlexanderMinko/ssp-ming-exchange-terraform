@@ -5,7 +5,8 @@
 set -euxo pipefail
 
 # --- Java 21 (Amazon Corretto, from the AL2023 repo) ---
-dnf install -y java-21-amazon-corretto-devel git
+# tmux keeps a long Gatling run alive when the SSM session drops (the shell would get SIGHUP otherwise).
+dnf install -y java-21-amazon-corretto-devel git tmux
 
 # --- sbt (official RPM repo from scala-sbt.org) ---
 curl -fsSL https://www.scala-sbt.org/sbt-rpm.repo -o /etc/yum.repos.d/sbt-rpm.repo

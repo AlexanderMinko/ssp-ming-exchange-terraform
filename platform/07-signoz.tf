@@ -119,11 +119,21 @@ resource "helm_release" "signoz_k8s_infra" {
     otelCollectorEndpoint = "http://signoz-otel-collector.signoz.svc.cluster.local:4318"
 
     presets = {
-      # logsCollection: chart defaults (tails /var/log/pods, skips kube-system and the agent's own logs),
-      # except the operator chain. A Helm list replaces the default list, so container-parser is repeated.
-      # The apps print one JSON object per line (logstash format). Without parsing, SigNoz stores that
-      # line as an opaque body, and the `traceId` inside it never links the log to its trace.
+      # logsCollection: chart defaults except two things.
+      # 1. A whitelist (decided 22/11/2026): only our business pods are collected; everything else is off by
+      #    default. Entries are OR-ed and match the pod-name prefix in /var/log/pods/<ns>_<pod>_<uid>/, so this
+      #    renders to include = *_exchange*_* and *_bidders*_*. Not `namespaces = ["production"]`: that would
+      #    also take mongodb-0. A new service is added here. Filtering at the agent means other pods' lines
+      #    never reach ClickHouse (a saved view in the UI would only hide them, still stored).
+      # 2. The operator chain. A Helm list replaces the default list, so container-parser is repeated.
+      #    The apps print one JSON object per line (logstash format). Without parsing, SigNoz stores that
+      #    line as an opaque body, and the `traceId` inside it never links the log to its trace.
       logsCollection = {
+        whitelist = {
+          enabled    = true
+          signozLogs = false # SigNoz's own pods stay out too
+          pods       = ["exchange", "bidders"]
+        }
         operators = [
           {
             id   = "container-parser" # chart default: strips the CRI prefix ("<time> stdout F ")
