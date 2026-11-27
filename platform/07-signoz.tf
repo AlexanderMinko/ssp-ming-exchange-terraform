@@ -201,6 +201,14 @@ resource "helm_release" "signoz_k8s_infra" {
             parse_to   = "attributes"
           },
           {
+            id          = "time-parser" # the app's @timestamp becomes the record time (when it wrote the line)
+            type        = "time_parser"
+            if          = "attributes[\"@timestamp\"] != nil"
+            parse_from  = "attributes[\"@timestamp\"]"
+            layout_type = "gotime"
+            layout      = "2006-01-02T15:04:05.000Z07:00"
+          },
+          {
             id   = "trace-parser" # MDC traceId/spanId (Micrometer Tracing) → the log record's trace_id/span_id
             type = "trace_parser"
             if   = "attributes.traceId != nil"
@@ -216,6 +224,13 @@ resource "helm_release" "signoz_k8s_infra" {
             type       = "severity_parser"
             if         = "attributes.level != nil"
             parse_from = "attributes.level"
+          },
+          {
+            id   = "service-name-to-resource" # the encoder's service_name → resource service.name (SigNoz's service)
+            type = "move"
+            if   = "attributes.service_name != nil"
+            from = "attributes.service_name"
+            to   = "resource[\"service.name\"]"
           },
           {
             id   = "message-to-body" # the readable message becomes the body; the rest stays as attributes
